@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Relativistic Word Search</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    background-color: #f4f4f9;
+    color: #333;
+  }
+  .container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  h1 { color: #2c3e50; }
+  p { font-size: 1.1em; color: #555; }
+  input[type="text"] {
+    padding: 12px;
+    width: 80%;
+    margin: 20px 0;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  input[type="text"]:focus {
+    border-color: #3498db;
+    outline: none;
+  }
+  button {
+    padding: 12px 30px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+  }
+  button:hover { background-color: #2980b9; }
+  #error-msg {
+    color: #e74c3c;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    gap: 2px;
+    margin: 30px auto;
+    max-width: 450px;
+    background-color: #eee;
+    padding: 5px;
+    border-radius: 5px;
+  }
+  .cell {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 18px;
+    color: #2c3e50;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 2px;
+  }
+  .cell:hover { background-color: #e8f4f8; }
+  .selected { background-color: #f1c40f !important; color: white; }
+  .found { background-color: #2ecc71 !important; color: white; }
+  .word-list {
+    text-align: left;
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+  }
+  .word-item {
+    font-weight: bold;
+    background: #ecf0f1;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+  }
+  .word-found {
+    text-decoration: line-through;
+    color: #95a5a6;
+    background: #e0e0e0;
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="login-screen">
+  <h1>The Examiner's Relativistic Break Room</h1>
+  <p>To access the word search, please enter the cipher hidden within the thesis abstracts:</p>
+  <input type="text" id="cipher-input" placeholder="Enter cipher..." onkeypress="handleKeyPress(event)">
+  <br>
+  <button onclick="checkCipher()">Unlock</button>
+  <p id="error-msg"></p>
+</div>
+
+<div class="container" id="wordsearch-screen" style="display:none; max-width: 800px;">
+  <h1>Relativistic Word Search</h1>
+  <p>Find the hidden astrophysics and machine learning terms!</p>
+  
+  <div id="grid" class="grid"></div>
+  
+  <div class="word-list" id="word-list"></div>
+</div>
+
+<script>
+  // The correct cipher
+  const CORRECT_CIPHER = "EINSTEINRING";
+  
+  // Word search data (from the PDF)
+  const gridData = [
+    ['E','L','L','I','P','T','I','C','I','T','Y','Z','W','I','C'],
+    ['P','N','Y','F','S','H','E','A','R','N','X','B','J','Q','O'],
+    ['O','C','E','L','C','D','A','R','K','M','A','T','T','E','R'],
+    ['I','I','E','L','U','T','B','O','L','O','T','V','E','G','M'],
+    ['S','U','B','S','T','R','U','C','T','U','R','E','S','R','O'],
+    ['S','Q','W','K','G','A','L','A','X','Y','T','G','D','A','R'],
+    ['O','C','O','S','M','O','L','O','G','Y','V','E','T','V','A'],
+    ['N','G','R','A','V','I','T','Y','N','N','K','T','L','I','N'],
+    ['S','T','R','O','N','G','L','E','N','S','I','N','G','T','T'],
+    ['E','M','U','C','E','U','C','L','I','D','Q','T','A','A','P'],
+    ['K','C','A','H','U','B','B','L','E','S','H','E','V','T','T'],
+    ['C','O','N','V','E','R','G','E','N','C','E','C','U','I','F'],
+    ['M','M','A','S','S','R','R','F','R','F','H','K','S','O','N'],
+    ['C','I','E','P','E','R','S','E','U','S','O','M','A','N','F'],
+    ['N','V','I','S','C','H','W','O','L','S','O','N','X','Y','Z']
+  ];
+
+  const wordsToFind = [
+    "ELLIPTICITY", "SHEAR", "DARKMATTER", "SUBSTRUCTURE", 
+    "GALAXY", "COSMOLOGY", "GRAVITY", "STRONGLENSING", 
+    "EUCLID", "HUBBLE", "CONVERGENCE", "MASS", 
+    "PERSEUS", "CHWOLSON", "POISSON", "CORMORANT"
+  ];
+
+  function checkCipher() {
+    const input = document.getElementById("cipher-input").value.toUpperCase().replace(/\s/g, "");
+    if (input === CORRECT_CIPHER) {
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("wordsearch-screen").style.display = "block";
+      initWordSearch();
+    } else {
+      document.getElementById("error-msg").innerText = "Incorrect cipher. Hint: Look at the first letter of the sentences in the thesis abstracts.";
+    }
+  }
+
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') checkCipher();
+  }
+
+  // --- Simple interactive word search logic ---
+  let selectedCells = [];
+  
+  function initWordSearch() {
+    const gridEl = document.getElementById('grid');
+    gridData.forEach((row, r) => {
+      row.forEach((letter, c) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.innerText = letter;
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        
+        cell.addEventListener('mousedown', () => startSelection(cell));
+        cell.addEventListener('mouseenter', (e) => {
+          if (e.buttons === 1) updateSelection(cell); // If mouse is held down
+        });
+        
+        gridEl.appendChild(cell);
+      });
+    });
+    document.addEventListener('mouseup', endSelection);
+
+    const wordListEl = document.getElementById('word-list');
+    wordsToFind.sort().forEach(word => {
+      const span = document.createElement('span');
+      span.className = 'word-item';
+      span.id = 'word-' + word;
+      span.innerText = word;
+      wordListEl.appendChild(span);
+    });
+  }
+
+  function startSelection(cell) {
+    if (cell.classList.contains('found')) return;
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+    selectedCells = [cell];
+    cell.classList.add('selected');
+  }
+
+  function updateSelection(cell) {
+    if (selectedCells.length === 0 || cell.classList.contains('found')) return;
+    if (!selectedCells.includes(cell)) {
+      selectedCells.push(cell);
+      cell.classList.add('selected');
+    }
+  }
+
+  function endSelection() {
+    if (selectedCells.length === 0) return;
+    
+    // Extract word from selected cells
+    let wordStr1 = selectedCells.map(c => c.innerText).join('');
+    let wordStr2 = selectedCells.map(c => c.innerText).reverse().join(''); // Allow reverse selection
+    
+    let matchedWord = wordsToFind.find(w => w === wordStr1 || w === wordStr2);
+    
+    if (matchedWord) {
+      // Mark as found
+      selectedCells.forEach(c => {
+        c.classList.remove('selected');
+        c.classList.add('found');
+      });
+      document.getElementById('word-' + matchedWord).classList.add('word-found');
+    } else {
+      // Clear selection
+      selectedCells.forEach(c => c.classList.remove('selected'));
+    }
+    selectedCells = [];
+  }
+</script>
+</body>
+</html>
