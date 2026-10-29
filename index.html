@@ -1,132 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Relativistic Word Search</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>The Examiner's Relativistic Break Room</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
+  :root {
+    --bg-color: #0b0f19;
+    --card-bg: #151d2f;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.4);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --found-bg: #10b981;
+    --found-text: #ffffff;
+    --selected-bg: #f59e0b;
+    --selected-text: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px 10px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 650px;
+    padding: 24px 20px;
     text-align: center;
-    background-color: #f4f4f9;
-    color: #333;
   }
-  .container {
-    max-width: 600px;
-    margin: 50px auto;
-    padding: 30px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 1.9rem);
+    margin-bottom: 12px;
+    color: #e2e8f0;
   }
-  h1 { color: #2c3e50; }
-  p { font-size: 1.1em; color: #555; }
+  p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 18px;
+  }
   input[type="text"] {
-    padding: 12px;
-    width: 80%;
-    margin: 20px 0;
-    border: 2px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+    width: 85%;
+    max-width: 380px;
+    padding: 12px 16px;
+    background: #0f172a;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1.1rem;
     text-align: center;
     letter-spacing: 2px;
     text-transform: uppercase;
+    margin-bottom: 14px;
+    outline: none;
+    transition: all 0.2s;
   }
   input[type="text"]:focus {
-    border-color: #3498db;
-    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
   }
   button {
-    padding: 12px 30px;
-    background-color: #3498db;
+    background: var(--accent);
     color: white;
     border: none;
-    border-radius: 4px;
-    font-size: 16px;
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
+    transition: background 0.2s, transform 0.1s;
   }
-  button:hover { background-color: #2980b9; }
+  button:hover { background: #2563eb; }
+  button:active { transform: scale(0.98); }
   #error-msg {
-    color: #e74c3c;
-    margin-top: 15px;
-    font-weight: bold;
+    color: #f87171;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    min-height: 20px;
+  }
+
+  /* Word Search Styles */
+  #wordsearch-screen { display: none; }
+  .instructions {
+    font-size: 0.85rem;
+    color: #38bdf8;
+    margin-bottom: 12px;
+  }
+  .grid-container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    touch-action: none; /* Prevents mobile page scroll while selecting letters */
+    user-select: none;
+    -webkit-user-select: none;
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(15, 1fr);
-    gap: 2px;
-    margin: 30px auto;
-    max-width: 450px;
-    background-color: #eee;
-    padding: 5px;
-    border-radius: 5px;
+    gap: 3px;
+    background: #1e293b;
+    padding: 4px;
+    border-radius: 8px;
   }
   .cell {
-    width: 100%;
     aspect-ratio: 1;
+    background: #0f172a;
+    color: #cbd5e1;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #fff;
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    font-size: 18px;
-    color: #2c3e50;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: clamp(11px, 3.2vw, 17px);
+    font-weight: 700;
+    border-radius: 3px;
     cursor: pointer;
-    user-select: none;
-    border-radius: 2px;
+    transition: background 0.15s, color 0.15s;
   }
-  .cell:hover { background-color: #e8f4f8; }
-  .selected { background-color: #f1c40f !important; color: white; }
-  .found { background-color: #2ecc71 !important; color: white; }
+  .cell.selected {
+    background: var(--selected-bg) !important;
+    color: var(--selected-text) !important;
+  }
+  .cell.found {
+    background: var(--found-bg);
+    color: var(--found-text);
+  }
+  .cell.found.selected {
+    background: #d97706 !important;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    margin: 16px 0 10px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
   .word-list {
-    text-align: left;
-    margin-top: 20px;
     display: flex;
     flex-wrap: wrap;
+    gap: 8px;
     justify-content: center;
-    gap: 15px;
+    margin-top: 10px;
   }
-  .word-item {
-    font-weight: bold;
-    background: #ecf0f1;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 0.9em;
+  .word-pill {
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    letter-spacing: 0.5px;
+    transition: all 0.3s;
   }
-  .word-found {
+  .word-pill.found {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    color: #6ee7b7;
     text-decoration: line-through;
-    color: #95a5a6;
-    background: #e0e0e0;
+    opacity: 0.7;
   }
+
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-content {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 14px;
+    border: 2px solid #10b981;
+    text-align: center;
+    max-width: 90%;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+  }
+  .modal-content h2 { color: #34d399; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 
-<div class="container" id="login-screen">
+<div class="card" id="login-screen">
   <h1>The Examiner's Relativistic Break Room</h1>
-  <p>To access the word search, please enter the cipher hidden within the thesis abstracts:</p>
-  <input type="text" id="cipher-input" placeholder="Enter cipher..." onkeypress="handleKeyPress(event)">
+  <p>To enter, enter the secret cipher hidden across the thesis abstracts:</p>
+  <input type="text" id="cipher-input" placeholder="ENTER CIPHER..." autocomplete="off">
   <br>
-  <button onclick="checkCipher()">Unlock</button>
-  <p id="error-msg"></p>
+  <button id="unlock-btn">Unlock</button>
+  <div id="error-msg"></div>
 </div>
 
-<div class="container" id="wordsearch-screen" style="display:none; max-width: 800px;">
+<div class="card" id="wordsearch-screen">
   <h1>Relativistic Word Search</h1>
-  <p>Find the hidden astrophysics and machine learning terms!</p>
+  <div class="instructions">💡 Tap first & last letter OR drag across to highlight a word</div>
   
-  <div id="grid" class="grid"></div>
-  
+  <div class="grid-container" id="grid-container">
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <div class="status-bar">
+    <span>Words Remaining: <b id="words-left">16</b></span>
+    <span>Found: <b id="words-found">0/16</b></span>
+  </div>
+
   <div class="word-list" id="word-list"></div>
 </div>
 
+<div class="modal" id="win-modal">
+  <div class="modal-content">
+    <h2>🎉 Congratulations! 🎉</h2>
+    <p style="color: #e2e8f0; font-size: 1.1rem; margin-top: 10px;">
+      You've found all 16 terms and conquered the Relativistic Break Room!
+    </p>
+    <button style="margin-top: 20px;" onclick="document.getElementById('win-modal').style.display='none'">Dismiss</button>
+  </div>
+</div>
+
 <script>
-  // The correct cipher
   const CORRECT_CIPHER = "EINSTEINRING";
-  
-  // Word search data (from the PDF)
   const gridData = [
     ['E','L','L','I','P','T','I','C','I','T','Y','Z','W','I','C'],
     ['P','N','Y','F','S','H','E','A','R','N','X','B','J','Q','O'],
@@ -152,90 +257,194 @@
     "PERSEUS", "CHWOLSON", "POISSON", "CORMORANT"
   ];
 
-  function checkCipher() {
-    const input = document.getElementById("cipher-input").value.toUpperCase().replace(/\s/g, "");
-    if (input === CORRECT_CIPHER) {
-      document.getElementById("login-screen").style.display = "none";
-      document.getElementById("wordsearch-screen").style.display = "block";
-      initWordSearch();
+  let foundWords = new Set();
+  let selectedCells = [];
+  let isDragging = false;
+  let tapStartCell = null;
+
+  // Unlock logic
+  const cipherInput = document.getElementById('cipher-input');
+  const errorMsg = document.getElementById('error-msg');
+  const unlockBtn = document.getElementById('unlock-btn');
+
+  function tryUnlock() {
+    const entered = cipherInput.value.toUpperCase().replace(/[^A-Z]/g, '');
+    if (entered === CORRECT_CIPHER) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('wordsearch-screen').style.display = 'block';
+      initGame();
     } else {
-      document.getElementById("error-msg").innerText = "Incorrect cipher. Hint: Look at the first letter of the sentences in the thesis abstracts.";
+      errorMsg.innerText = "Incorrect cipher. (Hint: check the first letter of abstract sentences!)";
     }
   }
 
-  function handleKeyPress(e) {
-    if (e.key === 'Enter') checkCipher();
-  }
+  unlockBtn.addEventListener('click', tryUnlock);
+  cipherInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
 
-  // --- Simple interactive word search logic ---
-  let selectedCells = [];
-  
-  function initWordSearch() {
+  function initGame() {
     const gridEl = document.getElementById('grid');
+    gridEl.innerHTML = '';
+    
     gridData.forEach((row, r) => {
-      row.forEach((letter, c) => {
+      row.forEach((char, c) => {
         const cell = document.createElement('div');
         cell.className = 'cell';
-        cell.innerText = letter;
+        cell.innerText = char;
         cell.dataset.r = r;
         cell.dataset.c = c;
-        
-        cell.addEventListener('mousedown', () => startSelection(cell));
-        cell.addEventListener('mouseenter', (e) => {
-          if (e.buttons === 1) updateSelection(cell); // If mouse is held down
-        });
-        
         gridEl.appendChild(cell);
       });
     });
-    document.addEventListener('mouseup', endSelection);
 
     const wordListEl = document.getElementById('word-list');
-    wordsToFind.sort().forEach(word => {
-      const span = document.createElement('span');
-      span.className = 'word-item';
-      span.id = 'word-' + word;
-      span.innerText = word;
-      wordListEl.appendChild(span);
+    wordListEl.innerHTML = '';
+    wordsToFind.slice().sort().forEach(word => {
+      const pill = document.createElement('div');
+      pill.className = 'word-pill';
+      pill.id = 'pill-' + word;
+      pill.innerText = word;
+      wordListEl.appendChild(pill);
     });
+
+    setupInteraction();
   }
 
-  function startSelection(cell) {
-    if (cell.classList.contains('found')) return;
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-    selectedCells = [cell];
-    cell.classList.add('selected');
+  function getCellAt(r, c) {
+    return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
   }
 
-  function updateSelection(cell) {
-    if (selectedCells.length === 0 || cell.classList.contains('found')) return;
-    if (!selectedCells.includes(cell)) {
-      selectedCells.push(cell);
-      cell.classList.add('selected');
+  function getLine(r1, c1, r2, c2) {
+    const dr = r2 - r1;
+    const dc = c2 - c1;
+    const dist = Math.max(Math.abs(dr), Math.abs(dc));
+    if (dist === 0) return [{r: r1, c: c1}];
+
+    // Strict straight-line check: horizontal, vertical, or 45-degree diagonal
+    if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return null;
+
+    const stepR = dr === 0 ? 0 : dr / Math.abs(dr);
+    const stepC = dc === 0 ? 0 : dc / Math.abs(dc);
+
+    const line = [];
+    for (let i = 0; i <= dist; i++) {
+      line.push({r: r1 + i * stepR, c: c1 + i * stepC});
     }
+    return line;
   }
 
-  function endSelection() {
-    if (selectedCells.length === 0) return;
-    
-    // Extract word from selected cells
-    let wordStr1 = selectedCells.map(c => c.innerText).join('');
-    let wordStr2 = selectedCells.map(c => c.innerText).reverse().join(''); // Allow reverse selection
-    
-    let matchedWord = wordsToFind.find(w => w === wordStr1 || w === wordStr2);
-    
-    if (matchedWord) {
-      // Mark as found
-      selectedCells.forEach(c => {
-        c.classList.remove('selected');
-        c.classList.add('found');
-      });
-      document.getElementById('word-' + matchedWord).classList.add('word-found');
-    } else {
-      // Clear selection
-      selectedCells.forEach(c => c.classList.remove('selected'));
-    }
+  function clearSelection() {
+    selectedCells.forEach(coords => {
+      const el = getCellAt(coords.r, coords.c);
+      if (el) el.classList.remove('selected');
+    });
     selectedCells = [];
+  }
+
+  function highlightLine(line) {
+    clearSelection();
+    if (!line) return;
+    line.forEach(coords => {
+      const el = getCellAt(coords.r, coords.c);
+      if (el) el.classList.add('selected');
+    });
+    selectedCells = line;
+  }
+
+  function checkSelection() {
+    if (selectedCells.length < 2) {
+      clearSelection();
+      return;
+    }
+    const letters = selectedCells.map(pt => gridData[pt.r][pt.c]).join('');
+    const lettersRev = letters.split('').reverse().join('');
+
+    let matched = wordsToFind.find(w => (w === letters || w === lettersRev) && !foundWords.has(w));
+    if (matched) {
+      foundWords.add(matched);
+      selectedCells.forEach(pt => {
+        const el = getCellAt(pt.r, pt.c);
+        if (el) {
+          el.classList.remove('selected');
+          el.classList.add('found');
+        }
+      });
+      selectedCells = [];
+
+      const pill = document.getElementById('pill-' + matched);
+      if (pill) pill.classList.add('found');
+
+      document.getElementById('words-found').innerText = `${foundWords.size}/${wordsToFind.length}`;
+      document.getElementById('words-left').innerText = `${wordsToFind.length - foundWords.size}`;
+
+      if (foundWords.size === wordsToFind.length) {
+        document.getElementById('win-modal').style.display = 'flex';
+      }
+    } else {
+      clearSelection();
+    }
+  }
+
+  function setupInteraction() {
+    const container = document.getElementById('grid-container');
+    let startPoint = null;
+
+    function getCellFromEvent(e) {
+      let x = e.clientX, y = e.clientY;
+      if (e.touches && e.touches.length > 0) {
+        x = e.touches[0].clientX;
+        y = e.touches[0].clientY;
+      }
+      const el = document.elementFromPoint(x, y);
+      if (el && el.classList.contains('cell')) {
+        return { r: parseInt(el.dataset.r), c: parseInt(el.dataset.c) };
+      }
+      return null;
+    }
+
+    container.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const cell = getCellFromEvent(e);
+      if (!cell) return;
+      isDragging = true;
+      startPoint = cell;
+      highlightLine([startPoint]);
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging || !startPoint) return;
+      const cell = getCellFromEvent(e);
+      if (!cell) return;
+      const line = getLine(startPoint.r, startPoint.c, cell.r, cell.c);
+      if (line) highlightLine(line);
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      const cell = getCellFromEvent(e);
+      
+      // Tap mode (user clicked or tapped without dragging)
+      if (cell && startPoint && cell.r === startPoint.r && cell.c === startPoint.c) {
+        if (!tapStartCell) {
+          tapStartCell = cell;
+          highlightLine([tapStartCell]);
+        } else {
+          const line = getLine(tapStartCell.r, tapStartCell.c, cell.r, cell.c);
+          tapStartCell = null;
+          if (line) {
+            highlightLine(line);
+            checkSelection();
+          } else {
+            clearSelection();
+          }
+        }
+      } else {
+        // Drag mode completed
+        tapStartCell = null;
+        checkSelection();
+      }
+      startPoint = null;
+    });
   }
 </script>
 </body>
