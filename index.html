@@ -15,7 +15,7 @@
     --found-bg: #10b981;
     --found-text: #ffffff;
     --selected-bg: #f59e0b;
-    --selected-text: #ffffff;
+    --selected-text: #000000;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -101,7 +101,7 @@
     width: 100%;
     max-width: 480px;
     margin: 0 auto;
-    touch-action: none; /* Prevents mobile page scroll while selecting letters */
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -125,18 +125,21 @@
     font-weight: 700;
     border-radius: 3px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: transform 0.1s, background-color 0.15s;
+    position: relative;
   }
-  .cell.selected {
-    background: var(--selected-bg) !important;
-    color: var(--selected-text) !important;
-  }
+  /* Found word styling */
   .cell.found {
-    background: var(--found-bg);
+    background-color: var(--found-bg);
     color: var(--found-text);
   }
-  .cell.found.selected {
-    background: #d97706 !important;
+  /* Active selection override - overrides found background completely */
+  .cell.selected {
+    background-color: var(--selected-bg) !important;
+    color: var(--selected-text) !important;
+    transform: scale(1.08);
+    z-index: 5;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
   }
 
   .status-bar {
@@ -257,12 +260,16 @@
     "PERSEUS", "CHWOLSON", "POISSON", "CORMORANT"
   ];
 
+  // Aliases for words with plurals in the grid
+  const wordAliases = {
+    "SUBSTRUCTURES": "SUBSTRUCTURE"
+  };
+
   let foundWords = new Set();
   let selectedCells = [];
   let isDragging = false;
   let tapStartCell = null;
 
-  // Unlock logic
   const cipherInput = document.getElementById('cipher-input');
   const errorMsg = document.getElementById('error-msg');
   const unlockBtn = document.getElementById('unlock-btn');
@@ -313,21 +320,39 @@
     return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
   }
 
-  function getLine(r1, c1, r2, c2) {
+  // Snaps dragged or tapped selection to the closest 8-way straight line
+  function snapLine(r1, c1, r2, c2) {
     const dr = r2 - r1;
     const dc = c2 - c1;
-    const dist = Math.max(Math.abs(dr), Math.abs(dc));
-    if (dist === 0) return [{r: r1, c: c1}];
+    if (dr === 0 && dc === 0) return [{ r: r1, c: c1 }];
 
-    // Strict straight-line check: horizontal, vertical, or 45-degree diagonal
-    if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return null;
+    const angle = Math.atan2(dr, dc);
+    const octant = Math.round(angle / (Math.PI / 4));
 
-    const stepR = dr === 0 ? 0 : dr / Math.abs(dr);
-    const stepC = dc === 0 ? 0 : dc / Math.abs(dc);
+    const dirMap = {
+      0: [0, 1],
+      1: [1, 1],
+      2: [1, 0],
+      3: [1, -1],
+      4: [0, -1],
+      '-4': [0, -1],
+      '-3': [-1, -1],
+      '-2': [-1, 0],
+      '-1': [-1, 1]
+    };
+
+    const [stepR, stepC] = dirMap[octant];
+    const dist = (stepR === 0) ? Math.abs(dc) : (stepC === 0 ? Math.abs(dr) : Math.max(Math.abs(dr), Math.abs(dc)));
 
     const line = [];
     for (let i = 0; i <= dist; i++) {
-      line.push({r: r1 + i * stepR, c: c1 + i * stepC});
+      const nr = r1 + i * stepR;
+      const nc = c1 + i * stepC;
+      if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15) {
+        line.push({ r: nr, c: nc });
+      } else {
+        break;
+      }
     }
     return line;
   }
@@ -359,6 +384,16 @@
     const lettersRev = letters.split('').reverse().join('');
 
     let matched = wordsToFind.find(w => (w === letters || w === lettersRev) && !foundWords.has(w));
+    
+    // Check aliases (e.g. SUBSTRUCTURES -> SUBSTRUCTURE)
+    if (!matched) {
+      if (wordAliases[letters] && !foundWords.has(wordAliases[letters])) {
+        matched = wordAliases[letters];
+      } else if (wordAliases[lettersRev] && !foundWords.has(wordAliases[lettersRev])) {
+        matched = wordAliases[lettersRev];
+      }
+    }
+
     if (matched) {
       foundWords.add(matched);
       selectedCells.forEach(pt => {
@@ -377,7 +412,9 @@
       document.getElementById('words-left').innerText = `${wordsToFind.length - foundWords.size}`;
 
       if (foundWords.size === wordsToFind.length) {
-        document.getElementById('win-modal').style.display = 'flex';
+        setTimeout(() => {
+          document.getElementById('win-modal').style.display = 'flex';
+        }, 300);
       }
     } else {
       clearSelection();
@@ -414,7 +451,7 @@
       if (!isDragging || !startPoint) return;
       const cell = getCellFromEvent(e);
       if (!cell) return;
-      const line = getLine(startPoint.r, startPoint.c, cell.r, cell.c);
+      const line = snapLine(startPoint.r, startPoint.c, cell.r, cell.c);
       if (line) highlightLine(line);
     });
 
@@ -422,14 +459,14 @@
       if (!isDragging) return;
       isDragging = false;
       const cell = getCellFromEvent(e);
-      
-      // Tap mode (user clicked or tapped without dragging)
+
+      // Tap Mode (User released on the same cell where they pressed)
       if (cell && startPoint && cell.r === startPoint.r && cell.c === startPoint.c) {
         if (!tapStartCell) {
           tapStartCell = cell;
           highlightLine([tapStartCell]);
         } else {
-          const line = getLine(tapStartCell.r, tapStartCell.c, cell.r, cell.c);
+          const line = snapLine(tapStartCell.r, tapStartCell.c, cell.r, cell.c);
           tapStartCell = null;
           if (line) {
             highlightLine(line);
@@ -439,7 +476,7 @@
           }
         }
       } else {
-        // Drag mode completed
+        // Drag Mode Completed
         tapStartCell = null;
         checkSelection();
       }
